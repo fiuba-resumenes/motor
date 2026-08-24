@@ -543,11 +543,21 @@ def construir(cfg: dict, *, frag_dir: Path, out_dir: Path) -> int:
         print(f"!! autoria de {cfg['clave']}: {e}", file=sys.stderr)
         return 1
 
-    # 6. botones de la otra materia. La PWA del shell (link al manifest,
+    # 6. boton de la otra materia. La PWA del shell (link al manifest,
     # apple-touch-icon, boton de instalar y registro de sw.js) se conserva:
     # los hrefs son relativos y generar_pwa escribe esos archivos por materia.
-    doc = re.sub(r'\s*<a class="icon-button wide" href="resumen\.html">.*?</a>', "",
-                 doc, flags=re.S)
+    # Si esta materia tiene una segunda pagina (un resumen, un apunte
+    # completo desde el resumen), boton_extra_href/texto lo re-apuntan en
+    # vez de borrarlo; sin eso, se borra (no aplica a la mayoria).
+    href_extra = cfg.get("boton_extra_href")
+    texto_extra = cfg.get("boton_extra_texto")
+    if href_extra and texto_extra:
+        doc = re.sub(r'<a class="icon-button wide" href="resumen\.html">.*?</a>',
+                     f'<a class="icon-button wide" href="{href_extra}">{texto_extra}</a>',
+                     doc, flags=re.S)
+    else:
+        doc = re.sub(r'\s*<a class="icon-button wide" href="resumen\.html">.*?</a>', "",
+                     doc, flags=re.S)
     doc = re.sub(r'<link rel="icon" href="data:image/png;base64,[^"]+"',
                  f'<link rel="icon" href="{favicon_de(cfg["favicon_hex"])}"', doc)
 
