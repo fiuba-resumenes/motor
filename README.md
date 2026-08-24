@@ -79,6 +79,13 @@ if __name__ == "__main__":
     sys.exit(generar(CFG, Path(".")) or 0)
 ```
 
+## Herramientas de texto (opcionales)
+
+- `python3 -m motor_apuntes.herramientas.acentuar fuentes/*.html`: agrega
+  tildes y eñes al texto visible de los fragmentos (saltea `pre`/`code`).
+- `python3 -m motor_apuntes.herramientas.verificar_tildes <backup> fuentes/*.html`:
+  confirma que un pase de `acentuar` no tocó nada más que las tildes.
+
 ## Qué NO es parte de este paquete
 
 - `gen_figuras_<materia>.py`: generador de figuras con datos, específico de

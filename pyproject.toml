@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "motor-apuntes"
-version = "0.1.0"
+version = "0.2.0"
 description = "Motor compartido para armar los apuntes de FIUBA Resumenes"
 requires-python = ">=3.9"
 
 [tool.setuptools]
-packages = ["motor_apuntes"]
+packages = ["motor_apuntes", "motor_apuntes.herramientas"]
 
 [tool.setuptools.package-data]
 motor_apuntes = ["*.html", "*.txt", "*.md"]
