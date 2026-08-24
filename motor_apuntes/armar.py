@@ -318,6 +318,9 @@ def transformar(frag: str, uid: str, numero: str) -> str:
                     lambda mm: f'<div class="table-wrap">{mm.group(1)}</div>',
                     cuerpo, flags=re.S)
     cuerpo = cuerpo.replace("<ul>\n    <li><b>", '<ul class="study-list">\n    <li><b>')
+    # idem para listas donde el orden importa (un flujo, un proceso paso a
+    # paso): mismo estilo de tarjeta, con numero en vez de vineta.
+    cuerpo = cuerpo.replace("<ol>\n    <li><b>", '<ol class="study-list">\n    <li><b>')
 
     return (f'    <section class="chapter" id="{uid}" data-title="{kw}">\n'
             f'      <div class="chapter-head">\n'
