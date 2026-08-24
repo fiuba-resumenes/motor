@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+salida/
+smoke_test.py
+*.egg-info/
+build/
+dist/

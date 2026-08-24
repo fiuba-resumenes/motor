@@ -1,0 +1,298 @@
+<!-- ============================================================================
+     Elegir que entra al PDF.
+
+     El apunte de Sistemas Distribuidos son 214 paginas y 76 de esas son la
+     autoevaluacion. Imprimir todo o nada era la unica opcion; aca se elige por
+     capitulo, agrupado igual que la barra lateral.
+
+     Las secciones no elegidas se ocultan solo en @media print, asi que la
+     pantalla no se toca y la seleccion no altera el documento.
+============================================================================ -->
+<style>
+  .imp-dialog {
+    width: min(620px, calc(100vw - 32px));
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    box-shadow: var(--shadow);
+  }
+  .imp-dialog::backdrop { background: rgba(10, 12, 18, .45); }
+  .imp-box { padding: 22px 24px 20px; }
+  .imp-tit { margin: 0 0 6px; font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+  .imp-sub { margin: 0 0 4px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+  .imp-lista {
+    max-height: min(52vh, 420px);
+    margin: 14px 0 0;
+    padding: 4px 2px;
+    overflow-y: auto;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+  }
+  .imp-grupo { padding: 9px 12px 4px; }
+  .imp-grupo + .imp-grupo { border-top: 1px solid var(--line); }
+  .imp-fila { display: flex; align-items: baseline; gap: 9px; padding: 3px 0; font-size: 14px; }
+  .imp-fila.titulo { font-weight: 700; }
+  .imp-fila.hijo { padding-left: 22px; color: var(--muted); }
+  .imp-fila input { flex: none; margin: 0; accent-color: var(--accent); cursor: pointer; }
+  .imp-fila label { flex: 1; cursor: pointer; }
+  .imp-pags { flex: none; font-size: 12.5px; opacity: .75; font-variant-numeric: tabular-nums; }
+  .imp-pie {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 9px;
+    margin-top: 15px;
+  }
+  .imp-total { font-size: 14px; font-weight: 700; }
+  .imp-total small { font-weight: 400; color: var(--muted); }
+  .imp-btn {
+    padding: 8px 15px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .imp-btn:hover:not(:disabled) { border-color: var(--accent); }
+  .imp-btn:disabled { opacity: .5; cursor: default; }
+  .imp-btn.primario { border-color: var(--accent); background: var(--accent-2); color: var(--accent-ink); font-weight: 700; }
+  .imp-btn.suelto { margin-left: auto; }
+  @media print {
+    .imp-dialog { display: none !important; }
+    .chapter.imp-fuera { display: none !important; }
+  }
+</style>
+
+<dialog class="imp-dialog" id="imp-dialog" aria-labelledby="imp-titulo">
+  <div class="imp-box">
+    <p class="imp-tit" id="imp-titulo">Imprimir o guardar como PDF</p>
+    <p class="imp-sub" id="imp-sub"></p>
+    <div class="imp-lista" id="imp-lista"></div>
+    <div class="imp-pie">
+      <span class="imp-total" id="imp-total"></span>
+      <button class="imp-btn suelto" id="imp-todo" type="button">Todo</button>
+      <button class="imp-btn" id="imp-nada" type="button">Nada</button>
+      <button class="imp-btn" id="imp-cancelar" type="button">Cancelar</button>
+      <button class="imp-btn primario" id="imp-ok" type="button">Imprimir</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+(function () {
+  'use strict';
+
+  var K_ELEGIDOS = 'fiuba-print-scope';
+
+  var boton = document.getElementById('print-button');
+  var dialogo = document.getElementById('imp-dialog');
+  var lista = document.getElementById('imp-lista');
+  if (!boton || !dialogo || !lista) return;
+
+  // Estimacion de paginas. Los coeficientes son un ajuste por minimos cuadrados
+  // sobre los tres apuntes impresos de verdad con Chrome (300, 57 y 64
+  // paginas), con los <details> ya abiertos. Error medido: +0,1%, +4,6% y
+  // -5,6%. Si cambia el CSS de impresion hay que volver a medir.
+  var PALABRAS_POR_PAGINA = 496;
+  var PAGINA_POR_BLOQUE = 0.271;
+
+  function medir(sec) {
+    var texto = sec.textContent || '';
+    var palabras = texto.split(/\s+/).filter(Boolean).length;
+    var bloques = sec.querySelectorAll('figure, table').length;
+    return {
+      palabras: palabras,
+      paginas: palabras / PALABRAS_POR_PAGINA + bloques * PAGINA_POR_BLOQUE
+    };
+  }
+
+  // La estructura sale de la barra lateral, que ya agrupa los capitulos como
+  // corresponde en cada apunte. Asi no hay nada especifico de una materia aca.
+  function leerGrupos() {
+    var grupos = [];
+    var titulos = document.querySelectorAll('.sidebar .nav-title');
+    for (var i = 0; i < titulos.length; i++) {
+      var nav = titulos[i].nextElementSibling;
+      if (!nav || !nav.classList.contains('toc')) continue;
+      var items = [];
+      var enlaces = nav.querySelectorAll('a[href^="#"]');
+      for (var j = 0; j < enlaces.length; j++) {
+        var uid = enlaces[j].getAttribute('href').slice(1);
+        var sec = document.getElementById(uid);
+        if (!sec || !sec.classList.contains('chapter')) continue;
+        var span = enlaces[j].querySelector('span');
+        var nombre = enlaces[j].textContent.replace(span ? span.textContent : '', '').trim();
+        items.push({ uid: uid, nombre: nombre, sec: sec, medida: medir(sec) });
+      }
+      if (items.length) grupos.push({ titulo: titulos[i].textContent.trim(), items: items });
+    }
+    return grupos;
+  }
+
+  var grupos = leerGrupos();
+  if (!grupos.length) return;   // apunte sin barra lateral: se deja el print de siempre
+
+  var todos = [];
+  grupos.forEach(function (g) { todos = todos.concat(g.items); });
+
+  function elegidosGuardados() {
+    try {
+      var v = JSON.parse(localStorage.getItem(K_ELEGIDOS) || 'null');
+      return Array.isArray(v) ? v : null;
+    } catch (e) { return null; }
+  }
+
+  function pintarLista() {
+    var guardados = elegidosGuardados();
+    lista.innerHTML = '';
+    grupos.forEach(function (g, gi) {
+      var caja = document.createElement('div');
+      caja.className = 'imp-grupo';
+
+      var filaG = document.createElement('div');
+      filaG.className = 'imp-fila titulo';
+      var chkG = document.createElement('input');
+      chkG.type = 'checkbox';
+      chkG.id = 'imp-g' + gi;
+      chkG.dataset.grupo = String(gi);
+      var labG = document.createElement('label');
+      labG.setAttribute('for', chkG.id);
+      labG.textContent = g.titulo;
+      var pagsG = document.createElement('span');
+      pagsG.className = 'imp-pags';
+      pagsG.dataset.pagsGrupo = String(gi);
+      filaG.appendChild(chkG); filaG.appendChild(labG); filaG.appendChild(pagsG);
+      caja.appendChild(filaG);
+
+      g.items.forEach(function (it) {
+        var fila = document.createElement('div');
+        fila.className = 'imp-fila hijo';
+        var chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.id = 'imp-c-' + it.uid;
+        chk.dataset.uid = it.uid;
+        chk.dataset.grupo = String(gi);
+        chk.checked = guardados ? guardados.indexOf(it.uid) >= 0 : true;
+        var lab = document.createElement('label');
+        lab.setAttribute('for', chk.id);
+        lab.textContent = it.nombre;
+        var pags = document.createElement('span');
+        pags.className = 'imp-pags';
+        pags.textContent = Math.max(1, Math.round(it.medida.paginas)) + ' p';
+        fila.appendChild(chk); fila.appendChild(lab); fila.appendChild(pags);
+        caja.appendChild(fila);
+      });
+
+      lista.appendChild(caja);
+    });
+    actualizar();
+  }
+
+  function marcados() {
+    return Array.prototype.slice.call(lista.querySelectorAll('input[data-uid]:checked'));
+  }
+
+  function actualizar() {
+    // total y por grupo
+    var suma = 0, palabras = 0;
+    grupos.forEach(function (g, gi) {
+      var sub = 0, algunoNo = false, algunoSi = false;
+      g.items.forEach(function (it) {
+        var chk = lista.querySelector('input[data-uid="' + it.uid + '"]');
+        if (chk && chk.checked) { sub += it.medida.paginas; palabras += it.medida.palabras; algunoSi = true; }
+        else algunoNo = true;
+      });
+      suma += sub;
+      var etiqueta = lista.querySelector('[data-pags-grupo="' + gi + '"]');
+      if (etiqueta) etiqueta.textContent = sub > 0 ? Math.round(sub) + ' p' : '';
+      var chkG = lista.querySelector('input[data-grupo="' + gi + '"]:not([data-uid])');
+      if (chkG) {
+        chkG.checked = algunoSi && !algunoNo;
+        chkG.indeterminate = algunoSi && algunoNo;
+      }
+    });
+
+    var paginas = Math.max(0, Math.round(suma));
+    document.getElementById('imp-total').innerHTML =
+      (paginas === 0 ? 'Nada seleccionado' : '≈ ' + paginas + (paginas === 1 ? ' página' : ' páginas')) +
+      (palabras ? ' <small>(' + palabras.toLocaleString('es-AR') + ' palabras)</small>' : '');
+    document.getElementById('imp-ok').disabled = paginas === 0;
+  }
+
+  function todo(valor) {
+    Array.prototype.forEach.call(lista.querySelectorAll('input[data-uid]'), function (c) { c.checked = valor; });
+    actualizar();
+  }
+
+  lista.addEventListener('change', function (e) {
+    var chk = e.target;
+    if (chk.dataset.uid === undefined && chk.dataset.grupo !== undefined) {
+      var gi = chk.dataset.grupo;
+      Array.prototype.forEach.call(
+        lista.querySelectorAll('input[data-uid][data-grupo="' + gi + '"]'),
+        function (c) { c.checked = chk.checked; });
+    }
+    actualizar();
+  });
+
+  document.getElementById('imp-todo').addEventListener('click', function () { todo(true); });
+  document.getElementById('imp-nada').addEventListener('click', function () { todo(false); });
+  document.getElementById('imp-cancelar').addEventListener('click', function () { dialogo.close(); });
+
+  document.getElementById('imp-ok').addEventListener('click', function () {
+    var elegidos = marcados().map(function (c) { return c.dataset.uid; });
+    localStorage.setItem(K_ELEGIDOS, JSON.stringify(elegidos));
+
+    todos.forEach(function (it) {
+      it.sec.classList.toggle('imp-fuera', elegidos.indexOf(it.uid) < 0);
+    });
+
+    function limpiar() {
+      todos.forEach(function (it) { it.sec.classList.remove('imp-fuera'); });
+      window.removeEventListener('afterprint', limpiar);
+    }
+    window.addEventListener('afterprint', limpiar);
+    // Red de seguridad: si el navegador no dispara afterprint (pasa en algunos
+    // moviles), igual se destapa todo y la pantalla no queda mutilada.
+    setTimeout(limpiar, 60000);
+
+    dialogo.close();
+    window.print();
+  });
+
+  // El shell intenta mostrar el contenido de los <details> cerrados al
+  // imprimir con "details:not([open]) > .details-body { display: block }".
+  // Chrome ya no lo respeta: el contenido vive en un slot propio y no alcanza
+  // con tocar el hijo. Resultado medido: la autoevaluacion salia impresa con
+  // las 71 preguntas y ninguna respuesta, 3.574 palabras en vez de 45.000.
+  // Se abren de verdad antes de imprimir y se cierran despues.
+  var cerradosAlImprimir = [];
+  window.addEventListener('beforeprint', function () {
+    cerradosAlImprimir = Array.prototype.filter.call(
+      document.querySelectorAll('details'), function (d) { return !d.open; });
+    cerradosAlImprimir.forEach(function (d) { d.open = true; });
+  });
+  window.addEventListener('afterprint', function () {
+    cerradosAlImprimir.forEach(function (d) { d.open = false; });
+    cerradosAlImprimir = [];
+  });
+
+  // El shell le colgo al boton un listener que imprime directo. Se lo cambia
+  // por este clonando el nodo, que es la forma de sacar listeners ajenos sin
+  // tocar el codigo del shell.
+  var nuevo = boton.cloneNode(true);
+  boton.parentNode.replaceChild(nuevo, boton);
+  nuevo.addEventListener('click', function () {
+    pintarLista();
+    var total = todos.reduce(function (a, it) { return a + it.medida.paginas; }, 0);
+    document.getElementById('imp-sub').textContent =
+      'Completo son unas ' + Math.round(total) + ' páginas. Destildá lo que no quieras imprimir.';
+    dialogo.showModal();
+  });
+})();
+</script>
