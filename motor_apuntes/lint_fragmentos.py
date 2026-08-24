@@ -148,8 +148,11 @@ def revisar(path: Path) -> list:
             n = txt.count(mal)
             fallas.append(f"{nombre} usado {n} vez/veces")
 
-    # Texto visible sin tildes (ignora tags, code, pre y svg).
+    # Texto visible sin tildes (ignora tags, code, pre, svg y formulas: una
+    # formula usa los nombres de sus variables/metricas tal cual, en ingles
+    # si asi las nombra la fuente, no es prosa en espanol).
     visible = re.sub(r"<(pre|code|svg)\b.*?</\1>", " ", txt, flags=re.S)
+    visible = re.sub(r'<(span|div) class="formula">.*?</\1>', " ", visible, flags=re.S)
     visible = re.sub(r"<[^>]+>", " ", visible)
     faltantes = {}
     for m in SIN_TILDE.finditer(visible):
