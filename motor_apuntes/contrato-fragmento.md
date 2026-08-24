@@ -41,6 +41,9 @@ exactamente un `<section>` y nada más (sin doctype, html, head, body, sin
 - `<div class="examen">` señal de final: indica que esto fue preguntado en
   finales, citando la forma típica de la pregunta. Ej: "Preguntado en
   finales: 'Compare X con Y' (2025-07, 2024-12)".
+- `<div class="riesgo">` consecuencia grave, irreversible o de sesgo real si
+  no se hace bien: más fuerte que `.warn`, no una distinción sutil sino algo
+  que sale caro si se ignora (un caso de sesgo real, un riesgo productivo).
 - `<details class="mas"><summary>...</summary>...</details>` para
   profundizaciones opcionales (demostraciones, casos borde, material que
   excede la clase).

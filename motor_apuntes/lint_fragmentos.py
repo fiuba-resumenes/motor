@@ -33,6 +33,8 @@ CLASES_OK = {
     "nota", "ref", "glo", "unidad", "intro", "tablewrap",
     # formula: recuadro para formulas sueltas, parte del contrato.
     "formula",
+    # riesgo: consecuencia grave o irreversible, mas fuerte que warn.
+    "riesgo",
 }
 
 # Palabras que en un apunte en espanol van con tilde y suelen aparecer sin

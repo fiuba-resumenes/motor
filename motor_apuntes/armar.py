@@ -28,6 +28,7 @@ CLASES = {
     "ej": "callout example",
     "warn": "callout warning",
     "examen": "callout exam",
+    "riesgo": "callout danger",
 }
 
 CSS_EXTRA = """
@@ -39,8 +40,10 @@ CSS_EXTRA = """
     .callout.example::before { content: "Ejemplo"; }
     .callout.warning::before { content: "Ojo"; }
     .callout.exam::before { content: "Tomado en finales"; }
+    .callout.danger::before { content: "Riesgo"; }
     .callout.blue::before, .callout.example::before,
-    .callout.warning::before, .callout.exam::before {
+    .callout.warning::before, .callout.exam::before,
+    .callout.danger::before {
       display: block;
       margin-bottom: 6px;
       font-size: 10px;
