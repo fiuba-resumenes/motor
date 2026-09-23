@@ -2909,10 +2909,14 @@
       }
     });
 
-    // Navegacion con flechas. El paso nativo (unos 40px, animado por el
-    // scroll-behavior smooth del html) es muy lento para un apunte largo:
-    // arriba/abajo avanzan un tercio de pantalla sin animacion, e
-    // izquierda/derecha saltan al tema (h2/h3) anterior o siguiente.
+    // Navegacion con flechas. El paso nativo (unos 40px) es muy lento para un
+    // apunte largo: arriba/abajo avanzan un tercio de pantalla, e
+    // izquierda/derecha saltan al tema (h2/h3) anterior o siguiente. Todo con
+    // animacion suave. Mientras una animacion sigue en curso, la tecla
+    // siguiente parte del destino pendiente y no de la posicion intermedia,
+    // asi mantener la flecha apretada no se frena.
+    let arrowTarget = null;
+    let arrowTime = 0;
     document.addEventListener('keydown', event => {
       if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
       const target = event.target;
@@ -2921,24 +2925,31 @@
         target instanceof HTMLSelectElement ||
         target.isContentEditable;
       if (isEditable || target.closest?.('dialog[open], pre, .table-wrap, table')) return;
+      if (!['ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft'].includes(event.key)) return;
+
+      const now = performance.now();
+      const base = arrowTarget !== null && now - arrowTime < 600 ? arrowTarget : window.scrollY;
+      const maxY = document.documentElement.scrollHeight - window.innerHeight;
+      let dest = null;
 
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-        event.preventDefault();
         const step = Math.max(160, Math.round(window.innerHeight / 3));
-        window.scrollBy({ top: event.key === 'ArrowDown' ? step : -step, behavior: 'instant' });
-      } else if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
-        const heads = Array.from(content.querySelectorAll('h2, h3'));
-        if (!heads.length) return;
-        event.preventDefault();
-        // Un titulo al que ya se salto queda a scroll-padding-top (24px) del
-        // borde: se toma como "actual" y no se vuelve a elegir.
+        dest = base + (event.key === 'ArrowDown' ? step : -step);
+      } else {
+        // Posiciones absolutas: un titulo queda a scroll-padding-top (24px)
+        // del borde, y el que coincide con el destino actual no se reelige.
         const anchor = 24, tolerance = 8;
-        const tops = heads.map(h => h.getBoundingClientRect().top);
-        const next = event.key === 'ArrowRight'
-          ? heads.find((h, i) => tops[i] > anchor + tolerance)
-          : heads.filter((h, i) => tops[i] < anchor - tolerance).pop();
-        if (next) next.scrollIntoView({ behavior: 'instant', block: 'start' });
+        const stops = Array.from(content.querySelectorAll('h2, h3'))
+          .map(h => h.getBoundingClientRect().top + window.scrollY - anchor);
+        dest = event.key === 'ArrowRight'
+          ? stops.find(y => y > base + tolerance)
+          : stops.filter(y => y < base - tolerance).pop();
+        if (dest === undefined) return;
       }
+      event.preventDefault();
+      arrowTarget = Math.min(Math.max(0, dest), maxY);
+      arrowTime = now;
+      window.scrollTo({ top: arrowTarget, behavior: 'smooth' });
     });
 
     highlightPin.addEventListener('click', () => setFixedHighlightMode(!fixedHighlightMode));
