@@ -2909,6 +2909,38 @@
       }
     });
 
+    // Navegacion con flechas. El paso nativo (unos 40px, animado por el
+    // scroll-behavior smooth del html) es muy lento para un apunte largo:
+    // arriba/abajo avanzan un tercio de pantalla sin animacion, e
+    // izquierda/derecha saltan al tema (h2/h3) anterior o siguiente.
+    document.addEventListener('keydown', event => {
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+      const target = event.target;
+      const isEditable = target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        target.isContentEditable;
+      if (isEditable || target.closest?.('dialog[open], pre, .table-wrap, table')) return;
+
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const step = Math.max(160, Math.round(window.innerHeight / 3));
+        window.scrollBy({ top: event.key === 'ArrowDown' ? step : -step, behavior: 'instant' });
+      } else if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+        const heads = Array.from(content.querySelectorAll('h2, h3'));
+        if (!heads.length) return;
+        event.preventDefault();
+        // Un titulo al que ya se salto queda a scroll-padding-top (24px) del
+        // borde: se toma como "actual" y no se vuelve a elegir.
+        const anchor = 24, tolerance = 8;
+        const tops = heads.map(h => h.getBoundingClientRect().top);
+        const next = event.key === 'ArrowRight'
+          ? heads.find((h, i) => tops[i] > anchor + tolerance)
+          : heads.filter((h, i) => tops[i] < anchor - tolerance).pop();
+        if (next) next.scrollIntoView({ behavior: 'instant', block: 'start' });
+      }
+    });
+
     highlightPin.addEventListener('click', () => setFixedHighlightMode(!fixedHighlightMode));
     document.getElementById('highlight-close').addEventListener('click', () => {
       if (fixedHighlightMode) setFixedHighlightMode(false);
